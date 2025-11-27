@@ -1,0 +1,10 @@
+{
+  "chat.mcp.serverSampling": {
+    "sdd_process_example/.vscode/mcp.json: CopilotKit MCP": {
+      "allowedModels": [
+        "copilot/claude-sonnet-4.5",
+        "copilot/oswe-vscode-secondary"
+      ]
+    }
+  }
+}

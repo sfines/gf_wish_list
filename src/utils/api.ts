@@ -84,14 +84,20 @@ export async function addItem(
   wishlistId: string,
   item: { url?: string; description?: string; title?: string }
 ) {
+  console.log('[addItem] Called with item:', item);
+  
   // Fetch OG image client-side before sending to API
   let ogImageUrl = '';
   if (item.url) {
+    console.log('[addItem] Fetching OG image for URL:', item.url);
     try {
       ogImageUrl = (await fetchOgImage(item.url)) || '';
+      console.log('[addItem] Got ogImageUrl:', ogImageUrl);
     } catch (error) {
-      console.warn('Failed to fetch OG image:', error);
+      console.warn('[addItem] Failed to fetch OG image:', error);
     }
+  } else {
+    console.log('[addItem] No URL provided, skipping OG image fetch');
   }
 
   const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items`, {

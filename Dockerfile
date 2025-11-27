@@ -24,10 +24,15 @@ FROM nginx:alpine
 # Copy built assets from builder
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
-# Cloud Run uses port 8080
+# Cloud Run injects PORT env variable (default 8080)
+ENV PORT=8080
+
+# nginx:alpine uses envsubst to process templates in /etc/nginx/templates/
+# and outputs to /etc/nginx/conf.d/
+
 EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

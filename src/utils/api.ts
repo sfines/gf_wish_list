@@ -1,4 +1,5 @@
 import { projectId, publicAnonKey } from './supabase/info';
+import { fetchOgImage } from './fetchOgImage';
 
 const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-a8f4bfaf`;
 
@@ -83,13 +84,23 @@ export async function addItem(
   wishlistId: string,
   item: { url?: string; description?: string; title?: string }
 ) {
+  // Fetch OG image client-side before sending to API
+  let ogImageUrl = '';
+  if (item.url) {
+    try {
+      ogImageUrl = (await fetchOgImage(item.url)) || '';
+    } catch (error) {
+      console.warn('Failed to fetch OG image:', error);
+    }
+  }
+
   const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(item),
+    body: JSON.stringify({ ...item, ogImageUrl }),
   });
 
   const data = await response.json();
@@ -120,13 +131,24 @@ export async function updateItem(
   itemId: string,
   updates: { title?: string; url?: string; description?: string }
 ) {
+  // Fetch OG image client-side if URL changed
+  let ogImageUrl: string | undefined;
+  if (updates.url) {
+    try {
+      ogImageUrl = (await fetchOgImage(updates.url)) || '';
+    } catch (error) {
+      console.warn('Failed to fetch OG image:', error);
+      ogImageUrl = '';
+    }
+  }
+
   const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(updates),
+    body: JSON.stringify({ ...updates, ogImageUrl }),
   });
 
   const data = await response.json();

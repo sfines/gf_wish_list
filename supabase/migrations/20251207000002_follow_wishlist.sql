@@ -28,6 +28,16 @@ ON wishlist_followers
 FOR SELECT
 USING (true);
 
+-- Allow users to select wishlists they are following (Moved from 01_add_wishlist_rls.sql)
+CREATE POLICY "Users can view wishlists they follow"
+ON public.wishlists
+FOR SELECT
+USING (
+  id IN (
+    SELECT wishlist_id FROM public.wishlist_followers WHERE user_id = auth.uid()
+  )
+);
+
 
 -- Function to follow a wishlist
 CREATE OR REPLACE FUNCTION follow_wishlist(p_wishlist_id UUID)

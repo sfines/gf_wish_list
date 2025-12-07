@@ -1,23 +1,34 @@
-import React from 'react';
+import React from "react";
 
 interface ImageSelectorProps {
-  imageUrls: string[];
-  selectedImageUrl: string;
-  onSelect: (url: string) => void;
+  wishlistId: string;
+  itemId: string;
+  currentImageUrl?: string;
+  suggestedImageUrls?: string[];
+  onImageSelect: (itemId: string, url: string) => void;
 }
 
-const ImageSelector: React.FC<ImageSelectorProps> = ({ imageUrls, selectedImageUrl, onSelect }) => {
+const ImageSelector: React.FC<ImageSelectorProps> = ({
+  itemId,
+  currentImageUrl,
+  suggestedImageUrls = [],
+  onImageSelect,
+}) => {
+  if (!suggestedImageUrls || suggestedImageUrls.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="flex space-x-2 p-2">
-      {imageUrls.map((url) => (
+    <div className="flex space-x-2 p-2 overflow-x-auto">
+      {suggestedImageUrls.map((url) => (
         <img
           key={url}
           src={url}
           alt="item-thumbnail"
           className={`w-16 h-16 object-cover cursor-pointer rounded-md border-2 ${
-            selectedImageUrl === url ? 'border-blue-500' : 'border-transparent'
+            currentImageUrl === url ? "border-blue-500" : "border-transparent"
           }`}
-          onClick={() => onSelect(url)}
+          onClick={() => onImageSelect(itemId, url)}
         />
       ))}
     </div>

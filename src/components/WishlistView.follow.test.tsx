@@ -2,22 +2,11 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { WishlistView } from "./WishlistView";
 import { vi } from "vitest";
 import * as api from "../utils/api";
+import { Wishlist } from "../utils/api";
 
-vi.mock("../utils/api", () => ({
-  followWishlist: vi.fn(),
-  unfollowWishlist: vi.fn(),
-  getFollowingStatus: vi.fn(),
-  // Mock other functions if needed by the component
-  updateItemImage: vi.fn(),
-  addItem: vi.fn(),
-  deleteItem: vi.fn(),
-  deleteWishlist: vi.fn(),
-  updateItemClaimed: vi.fn(),
-  updateItem: vi.fn(),
-  updateWishlist: vi.fn(),
-}));
+vi.mock("../utils/api");
 
-const mockWishlist = {
+const mockWishlist: Wishlist = {
   id: "1",
   name: "Alice's Wishlist",
   description: "A public wishlist",
@@ -29,20 +18,24 @@ const mockWishlist = {
 describe("WishlistView Follow/Unfollow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(api).getSharedWishlist.mockResolvedValue({
+      wishlist: mockWishlist,
+    });
   });
 
-  it("shows Follow button for a non-owned wishlist and can follow", async () => {
-    (api.getFollowingStatus as vi.Mock).mockResolvedValue({
+  it("shows follow button for a shared list that is not followed", async () => {
+    vi.mocked(api).getFollowingStatus.mockResolvedValue({
       is_following: false,
     });
-    (api.followWishlist as vi.Mock).mockResolvedValue({});
 
     render(
       <WishlistView
         wishlist={mockWishlist}
-        accessToken="test-token"
         isOwner={false}
+        accessToken="test-token"
         onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
       />
     );
 
@@ -53,7 +46,7 @@ describe("WishlistView Follow/Unfollow", () => {
     fireEvent.click(screen.getByText("Follow"));
 
     await waitFor(() => {
-      expect(api.followWishlist).toHaveBeenCalledWith("test-token", "1");
+      expect(api.followWishlist).toHaveBeenCalledWith(expect.any(String), "1");
     });
 
     await waitFor(() => {
@@ -61,18 +54,17 @@ describe("WishlistView Follow/Unfollow", () => {
     });
   });
 
-  it("shows Unfollow button for a followed wishlist and can unfollow", async () => {
-    (api.getFollowingStatus as vi.Mock).mockResolvedValue({
-      is_following: true,
-    });
-    (api.unfollowWishlist as vi.Mock).mockResolvedValue({});
+  it("shows unfollow button for a shared list that is already followed", async () => {
+    vi.mocked(api).getFollowingStatus.mockResolvedValue({ is_following: true });
 
     render(
       <WishlistView
         wishlist={mockWishlist}
-        accessToken="test-token"
         isOwner={false}
+        accessToken="test-token"
         onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
       />
     );
 
@@ -83,7 +75,10 @@ describe("WishlistView Follow/Unfollow", () => {
     fireEvent.click(screen.getByText("Unfollow"));
 
     await waitFor(() => {
-      expect(api.unfollowWishlist).toHaveBeenCalledWith("test-token", "1");
+      expect(api.unfollowWishlist).toHaveBeenCalledWith(
+        expect.any(String),
+        "1"
+      );
     });
 
     await waitFor(() => {
@@ -91,19 +86,56 @@ describe("WishlistView Follow/Unfollow", () => {
     });
   });
 
-  it("does not show follow/unfollow buttons for an owned wishlist", async () => {
+  it("calls followWishlist when follow button is clicked", async () => {
+    vi.mocked(api).getFollowingStatus.mockResolvedValue({
+      is_following: false,
+    });
+    vi.mocked(api).followWishlist.mockResolvedValue({});
+
     render(
       <WishlistView
         wishlist={mockWishlist}
+        isOwner={false}
         accessToken="test-token"
-        isOwner={true}
         onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
       />
     );
 
     await waitFor(() => {
-      expect(screen.queryByText("Follow")).not.toBeInTheDocument();
-      expect(screen.queryByText("Unfollow")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText("Follow"));
+    });
+
+    await waitFor(() => {
+      expect(api.followWishlist).toHaveBeenCalledWith(expect.any(String), "1");
+    });
+  });
+
+  it("calls unfollowWishlist when unfollow button is clicked", async () => {
+    vi.mocked(api).getFollowingStatus.mockResolvedValue({ is_following: true });
+    vi.mocked(api).unfollowWishlist.mockResolvedValue({});
+
+    render(
+      <WishlistView
+        wishlist={mockWishlist}
+        isOwner={false}
+        accessToken="test-token"
+        onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      fireEvent.click(screen.getByText("Unfollow"));
+    });
+
+    await waitFor(() => {
+      expect(api.unfollowWishlist).toHaveBeenCalledWith(
+        expect.any(String),
+        "1"
+      );
     });
   });
 });

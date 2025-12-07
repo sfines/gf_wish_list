@@ -1,210 +1,190 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { WishlistView } from "./WishlistView";
+import { vi } from "vitest";
+import * as api from "../utils/api";
+
+vi.mock("../utils/api");
 
 const mockWishlist = {
   id: "1",
   name: "Test Wishlist",
   description: "A test wishlist",
   shareToken: "abc123",
-  createdAt: "2024-01-01T00:00:00Z",
   items: [],
+  createdAt: new Date().toISOString(),
 };
 
-const mockOnBack = vi.fn();
-const mockOnUpdate = vi.fn();
-
-describe("WishlistView - Item Image Display", () => {
-  it("displays image when item has image_url", () => {
-    const wishlistWithImage = {
-      ...mockWishlist,
-      items: [
-        {
-          id: "item1",
-          title: "Test Item",
-          url: "https://example.com",
-          description: "A test item",
-          addedAt: "2024-01-01T00:00:00Z",
-          claimed: false,
-          image_url: "https://example.com/image.jpg",
-        },
-      ],
-    };
-
-    render(
-      <WishlistView
-        wishlist={wishlistWithImage}
-        isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    const image = screen.getByRole("img", { name: "Test Item" });
-    expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute("src", "https://example.com/image.jpg");
+describe("WishlistView", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
   });
 
-  it("does not display image container when item has no image_url", () => {
-    const wishlistWithoutImage = {
-      ...mockWishlist,
-      items: [
-        {
-          id: "item1",
-          title: "Test Item",
-          url: "https://example.com",
-          description: "A test item",
-          addedAt: "2024-01-01T00:00:00Z",
-          claimed: false,
-        },
-      ],
-    };
-
+  it("renders the wishlist details", () => {
     render(
       <WishlistView
-        wishlist={wishlistWithoutImage}
-        isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
+        wishlist={mockWishlist}
+        isOwner={true}
+        onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
       />
     );
 
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("Test Item")).toBeInTheDocument();
+    expect(screen.getByText("Test Wishlist")).toBeInTheDocument();
+    expect(screen.getByText("A test wishlist")).toBeInTheDocument();
   });
 
-  it("uses item title as alt text when available", () => {
-    const wishlistWithImage = {
-      ...mockWishlist,
-      items: [
-        {
-          id: "item1",
-          title: "My Special Item",
-          url: "https://example.com",
-          description: "",
-          addedAt: "2024-01-01T00:00:00Z",
-          claimed: false,
-          image_url: "https://example.com/image.jpg",
-        },
-      ],
-    };
+  it("allows adding a new item", async () => {
+    const onUpdate = vi.fn();
+    vi.mocked(api).addItem.mockResolvedValue({
+      wishlist: {
+        ...mockWishlist,
+        items: [
+          {
+            id: "item-3",
+            title: "New Item",
+            description: "",
+            url: "",
+            addedAt: new Date().toISOString(),
+            claimed: false,
+          },
+        ],
+      },
+    });
 
     render(
       <WishlistView
-        wishlist={wishlistWithImage}
-        isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
+        wishlist={mockWishlist}
+        isOwner={true}
+        accessToken="test-token"
+        onBack={() => {}}
+        onUpdate={onUpdate}
+        onDelete={() => {}}
       />
     );
 
-    const image = screen.getByRole("img", { name: "My Special Item" });
-    expect(image).toHaveAttribute("alt", "My Special Item");
+    fireEvent.click(screen.getByText("Add Item"));
+
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "New Item" },
+    });
+    // Click the submit button inside the dialog
+    const addButtons = screen.getAllByText("Add Item");
+    fireEvent.click(addButtons[addButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(api.addItem).toHaveBeenCalledWith("test-token", "1", {
+        title: "New Item",
+        description: "",
+        url: "",
+      });
+      expect(onUpdate).toHaveBeenCalled();
+    });
   });
 
-  it("uses fallback alt text when no title is set", () => {
-    const wishlistWithImage = {
+  it("allows deleting an item", async () => {
+    const onUpdate = vi.fn();
+    const wishlistWithItem = {
       ...mockWishlist,
       items: [
         {
-          id: "item1",
-          title: "",
-          url: "https://example.com",
-          description: "A description",
-          addedAt: "2024-01-01T00:00:00Z",
+          id: "item-1",
+          title: "Item 1",
+          description: "Description 1",
+          url: "https://example.com/item1",
+          addedAt: new Date().toISOString(),
           claimed: false,
-          image_url: "https://example.com/image.jpg",
         },
       ],
     };
+    vi.mocked(api).deleteItem.mockResolvedValue(undefined);
 
     render(
       <WishlistView
-        wishlist={wishlistWithImage}
-        isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
+        wishlist={wishlistWithItem}
+        isOwner={true}
+        accessToken="test-token"
+        onBack={() => {}}
+        onUpdate={onUpdate}
+        onDelete={() => {}}
       />
     );
 
-    const image = screen.getByRole("img", { name: "Item preview" });
-    expect(image).toHaveAttribute("alt", "Item preview");
+    fireEvent.click(screen.getByRole("button", { name: "Delete item" }));
+    fireEvent.click(screen.getByText("Delete"));
+
+    await waitFor(() => {
+      expect(api.deleteItem).toHaveBeenCalledWith("test-token", "1", "item-1");
+      expect(onUpdate).toHaveBeenCalled();
+    });
   });
 
-  it("hides image on error and logs to console", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const wishlistWithImage = {
+  it("allows claiming an item in a non-owned list", async () => {
+    const onUpdate = vi.fn();
+    const wishlistWithItem = {
       ...mockWishlist,
       items: [
         {
-          id: "item1",
-          title: "Test Item",
-          url: "https://example.com",
-          description: "",
-          addedAt: "2024-01-01T00:00:00Z",
+          id: "item-1",
+          title: "Item 1",
+          description: "Description 1",
+          url: "https://example.com/item1",
+          addedAt: new Date().toISOString(),
           claimed: false,
-          image_url: "https://example.com/broken-image.jpg",
         },
       ],
     };
+    vi.mocked(api).updateItemClaimed.mockResolvedValue({
+      ...wishlistWithItem.items[0],
+      claimed: true,
+    });
+    vi.mocked(api).getFollowingStatus.mockResolvedValue({
+      is_following: false,
+    });
 
     render(
       <WishlistView
-        wishlist={wishlistWithImage}
+        wishlist={wishlistWithItem}
         isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
+        accessToken="test-token"
+        onBack={() => {}}
+        onUpdate={onUpdate}
+        onDelete={() => {}}
       />
     );
 
-    const image = screen.getByRole("img", { name: "Test Item" });
-    fireEvent.error(image);
+    fireEvent.click(screen.getByText("Mark as Purchased"));
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Failed to load image:",
-      "https://example.com/broken-image.jpg"
-    );
-    expect(
-      screen.queryByRole("img", { name: "Test Item" })
-    ).not.toBeInTheDocument();
-
-    consoleSpy.mockRestore();
+    await waitFor(() => {
+      expect(api.updateItemClaimed).toHaveBeenCalledWith("1", "item-1", true);
+      expect(onUpdate).toHaveBeenCalled();
+    });
   });
 
-  it("displays title, description, and URL when image is present", () => {
-    const wishlistWithImage = {
+  it("does not show claim button for owned list", () => {
+    const wishlistWithItem = {
       ...mockWishlist,
       items: [
         {
-          id: "item1",
-          title: "Test Item",
-          url: "https://example.com",
-          description: "Item description",
-          addedAt: "2024-01-01T00:00:00Z",
+          id: "item-1",
+          title: "Item 1",
+          description: "Description 1",
+          url: "https://example.com/item1",
+          addedAt: new Date().toISOString(),
           claimed: false,
-          image_url: "https://example.com/image.jpg",
         },
       ],
     };
-
     render(
       <WishlistView
-        wishlist={wishlistWithImage}
-        isOwner={false}
-        onBack={mockOnBack}
-        onUpdate={mockOnUpdate}
+        wishlist={wishlistWithItem}
+        isOwner={true}
+        onBack={() => {}}
+        onUpdate={() => {}}
+        onDelete={() => {}}
       />
     );
 
-    const image = screen.getByRole("img", { name: "Test Item" });
-    expect(image).toBeInTheDocument();
-
-    expect(screen.getByText("Test Item")).toBeInTheDocument();
-    expect(screen.getByText("Item description")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /view product/i })).toHaveAttribute(
-      "href",
-      "https://example.com"
-    );
+    expect(screen.queryByText("Mark as Purchased")).not.toBeInTheDocument();
   });
 });

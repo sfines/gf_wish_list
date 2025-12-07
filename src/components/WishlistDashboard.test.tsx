@@ -4,10 +4,7 @@ import { vi } from "vitest";
 import * as api from "../utils/api";
 
 // Mock the API module
-vi.mock("../utils/api", () => ({
-  getWishlists: vi.fn(),
-  createWishlist: vi.fn(),
-}));
+vi.mock("../utils/api");
 
 const mockWishlists = {
   wishlists: [
@@ -18,6 +15,7 @@ const mockWishlists = {
       shareToken: "abc",
       items: [],
       createdAt: new Date().toISOString(),
+      user_id: "user-1",
     },
   ],
   following: [
@@ -28,6 +26,7 @@ const mockWishlists = {
       shareToken: "def",
       items: [{ id: "item-1", title: "A Book" }],
       createdAt: new Date().toISOString(),
+      user_id: "user-2",
     },
   ],
 };
@@ -39,12 +38,13 @@ describe("WishlistDashboard", () => {
   });
 
   it("renders owned and followed wishlists", async () => {
-    (api.getWishlists as vi.Mock).mockResolvedValue(mockWishlists);
+    vi.mocked(api).getWishlists.mockResolvedValue(mockWishlists);
 
     render(
       <WishlistDashboard
         accessToken="test-token"
         userName="Test User"
+        userId="user-1"
         onLogout={() => {}}
       />
     );
@@ -59,7 +59,7 @@ describe("WishlistDashboard", () => {
   });
 
   it("shows a message when there are no wishlists", async () => {
-    (api.getWishlists as vi.Mock).mockResolvedValue({
+    vi.mocked(api).getWishlists.mockResolvedValue({
       wishlists: [],
       following: [],
     });
@@ -68,6 +68,7 @@ describe("WishlistDashboard", () => {
       <WishlistDashboard
         accessToken="test-token"
         userName="Test User"
+        userId="user-1"
         onLogout={() => {}}
       />
     );
@@ -78,7 +79,7 @@ describe("WishlistDashboard", () => {
   });
 
   it("opens the create wishlist dialog", async () => {
-    (api.getWishlists as vi.Mock).mockResolvedValue({
+    vi.mocked(api).getWishlists.mockResolvedValue({
       wishlists: [],
       following: [],
     });
@@ -87,6 +88,7 @@ describe("WishlistDashboard", () => {
       <WishlistDashboard
         accessToken="test-token"
         userName="Test User"
+        userId="user-1"
         onLogout={() => {}}
       />
     );
@@ -110,16 +112,17 @@ describe("WishlistDashboard", () => {
       createdAt: new Date().toISOString(),
     };
 
-    (api.getWishlists as vi.Mock).mockResolvedValue({
+    vi.mocked(api).getWishlists.mockResolvedValue({
       wishlists: [],
       following: [],
     });
-    (api.createWishlist as vi.Mock).mockResolvedValue({ wishlist: newWishlist });
+    vi.mocked(api).createWishlist.mockResolvedValue({ wishlist: newWishlist });
 
     render(
       <WishlistDashboard
         accessToken="test-token"
         userName="Test User"
+        userId="user-1"
         onLogout={() => {}}
       />
     );

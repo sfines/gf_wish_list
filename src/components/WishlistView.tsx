@@ -74,9 +74,9 @@ interface Wishlist {
   id: string;
   name: string;
   description: string;
-  shareToken: string;
+  share_token: string;
   items: WishlistItem[];
-  createdAt: string;
+  created_at: string;
 }
 
 interface WishlistViewProps {
@@ -111,7 +111,7 @@ export function WishlistView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  const shareUrl = `${window.location.origin}?share=${wishlist.shareToken}`;
+  const shareUrl = `${window.location.origin}?share=${wishlist.share_token}`;
 
   useEffect(() => {
     const fetchFollowingStatus = async () => {
@@ -193,7 +193,10 @@ export function WishlistView({
         const updatedWishlist = {
           ...wishlist,
           items: [
-            { ...newItem, addedAt: newItem.created_at || new Date().toISOString() },
+            {
+              ...newItem,
+              addedAt: newItem.created_at || new Date().toISOString(),
+            },
             ...(wishlist.items || []),
           ],
         };
@@ -219,11 +222,16 @@ export function WishlistView({
 
     setIsSubmitting(true);
     try {
-      const updatedItem = await updateItem(accessToken, wishlist.id, editingItem.id, {
-        title: itemTitle,
-        url: itemUrl,
-        description: itemDescription,
-      });
+      const updatedItem = await updateItem(
+        accessToken,
+        wishlist.id,
+        editingItem.id,
+        {
+          title: itemTitle,
+          url: itemUrl,
+          description: itemDescription,
+        }
+      );
 
       if (onUpdate) {
         const updatedWishlist = {
@@ -448,7 +456,11 @@ export function WishlistView({
           {isOwner && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon" aria-label="Delete wishlist">
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  aria-label="Delete wishlist"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -553,7 +565,11 @@ export function WishlistView({
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Delete item">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Delete item"
+                            >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </AlertDialogTrigger>
@@ -579,9 +595,7 @@ export function WishlistView({
                     ) : (
                       <Button
                         variant={item.claimed ? "secondary" : "default"}
-                        onClick={() =>
-                          handleToggleClaim(item.id, item.claimed)
-                        }
+                        onClick={() => handleToggleClaim(item.id, item.claimed)}
                       >
                         {item.claimed ? (
                           <>

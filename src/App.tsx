@@ -1,122 +1,110 @@
-import { useState, useEffect } from 'react';
-import { AuthForm } from './components/AuthForm';
-import { WishlistDashboard } from './components/WishlistDashboard';
-import { WishlistView } from './components/WishlistView';
-import { createClient } from './utils/supabase-client';
-import { getSharedWishlist } from './utils/api';
-import { Toaster } from './components/ui/sonner';
+import { useState, useEffect } from "react";
+import { AuthForm } from "./components/AuthForm";
+import { WishlistDashboard } from "./components/WishlistDashboard";
+import { WishlistView } from "./components/WishlistView";
+import { createClient } from "./utils/supabase-client";
+import { getSharedWishlist } from "./utils/api";
+import { Session } from "@supabase/supabase-js";
 
-export default function App() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
+const supabase = createClient();
+
+const App = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [sharedWishlist, setSharedWishlist] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [sharedWishlist, setSharedWishlist] = useState<any>(null);
-  const [isLoadingShared, setIsLoadingShared] = useState(false);
 
   useEffect(() => {
-    // Check for existing session
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsLoading(false);
+    });
+
     const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setAccessToken(session.access_token);
-        setUserName(session.user?.user_metadata?.name || 'User');
-      }
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setSession(session);
       setIsLoading(false);
     };
 
     checkSession();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    // Check for shared wishlist in URL
     const params = new URLSearchParams(window.location.search);
-    const shareToken = params.get('share');
-    
+    const shareToken = params.get("share");
+
     if (shareToken) {
-      loadSharedWishlist(shareToken);
+      const loadWishlist = async (token: string) => {
+        try {
+          setIsLoading(true);
+          const data = await getSharedWishlist(token);
+          setSharedWishlist(data);
+        } catch (error) {
+          console.error("Error loading shared wishlist:", error);
+          // Handle error (e.g., show a not found message)
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadWishlist(shareToken);
     }
   }, []);
 
-  const loadSharedWishlist = async (shareToken: string) => {
-    setIsLoadingShared(true);
-    try {
-      const data = await getSharedWishlist(shareToken);
-      setSharedWishlist(data.wishlist);
-    } catch (error) {
-      console.error('Error loading shared wishlist:', error);
-    } finally {
-      setIsLoadingShared(false);
-    }
-  };
-
-  const handleAuthSuccess = (token: string, name: string) => {
-    setAccessToken(token);
-    setUserName(name);
-  };
-
-  const handleLogout = () => {
-    setAccessToken(null);
-    setUserName('');
-  };
-
-  const handleBackFromShared = () => {
-    setSharedWishlist(null);
-    // Remove share token from URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-  };
-
-  const handleSharedWishlistUpdate = (updatedWishlist: any) => {
-    setSharedWishlist(updatedWishlist);
-  };
-
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
       </div>
     );
   }
 
-  // Show shared wishlist if accessed via share link
   if (sharedWishlist) {
-    if (isLoadingShared) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-          <p className="text-muted-foreground">Loading wishlist...</p>
-        </div>
-      );
-    }
-    
+    const isOwner = session?.user?.id === sharedWishlist.user_id;
     return (
-      <>
-        <WishlistView
-          wishlist={sharedWishlist}
-          accessToken={accessToken || undefined}
-          isOwner={false}
-          onBack={handleBackFromShared}
-          onUpdate={handleSharedWishlistUpdate}
-        />
-        <Toaster />
-      </>
+      <div className="min-h-screen bg-gray-100">
+        <div className="container mx-auto p-4">
+          <WishlistView
+            wishlist={sharedWishlist}
+            accessToken={session?.access_token}
+            isOwner={isOwner}
+            onBack={() => setSharedWishlist(null)}
+            onUpdate={(updated) => setSharedWishlist(updated)}
+            onDelete={() => setSharedWishlist(null)}
+          />
+        </div>
+      </div>
     );
   }
 
-  // Show auth or dashboard
-  if (!accessToken) {
-    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+  if (!session) {
+    return (
+      <AuthForm
+        onAuthSuccess={() => {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+          });
+        }}
+      />
+    );
   }
 
   return (
-    <>
-      <WishlistDashboard
-        accessToken={accessToken}
-        userName={userName}
-        onLogout={handleLogout}
-      />
-      <Toaster />
-    </>
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto p-4">
+        <WishlistDashboard
+          accessToken={session.access_token}
+          userName={session.user.user_metadata.full_name || session.user.email}
+          userId={session.user.id}
+          onLogout={() => supabase.auth.signOut()}
+        />
+      </div>
+    </div>
   );
-}
+};
+
+export default App;

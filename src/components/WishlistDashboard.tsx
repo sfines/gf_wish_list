@@ -1,40 +1,50 @@
-import { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import { useState, useEffect } from "react";
+import { Button } from "./ui/button";
 import {
-  Plus,
-  Gift,
-  LogOut,
-  ExternalLink,
-  Heart,
-} from "lucide-react";
-import { createWishlist, getWishlists } from '../utils/api';
-import { createClient } from '../utils/supabase-client';
-import { WishlistView } from './WishlistView';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Plus, Gift, LogOut, ExternalLink, Heart } from "lucide-react";
+import { createWishlist, getWishlists, getWishlist } from "../utils/api";
+import { createClient } from "../utils/supabase-client";
+import { WishlistView } from "./WishlistView";
 
 interface Wishlist {
   id: string;
   name: string;
   description: string;
-  shareToken: string;
+  share_token: string;
   items: any[];
-  createdAt: string;
+  created_at: string;
+  user_id: string;
 }
 
 interface WishlistDashboardProps {
+  onLogout: () => void;
   accessToken: string;
   userName: string;
-  onLogout: () => void;
+  userId: string;
 }
 
 export function WishlistDashboard({
+  onLogout,
   accessToken,
   userName,
-  onLogout,
+  userId,
 }: WishlistDashboardProps) {
   const [wishlists, setWishlists] = useState<Wishlist[]>([]);
   const [followingWishlists, setFollowingWishlists] = useState<Wishlist[]>([]);
@@ -44,21 +54,29 @@ export function WishlistDashboard({
   const [selectedWishlistIsOwned, setSelectedWishlistIsOwned] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newWishlistName, setNewWishlistName] = useState('');
-  const [newWishlistDescription, setNewWishlistDescription] = useState('');
+  const [newWishlistName, setNewWishlistName] = useState("");
+  const [newWishlistDescription, setNewWishlistDescription] = useState("");
 
   useEffect(() => {
     loadWishlists();
-  }, []);
+  }, [accessToken]);
 
   const loadWishlists = async () => {
+    if (!accessToken) return;
     try {
       setIsLoading(true);
       const data = await getWishlists(accessToken);
-      setWishlists(data.wishlists || []);
+      // Filter wishlists to only show ones owned by the user
+      const ownedWishlists = (data.wishlists || []).filter(
+        (w: any) => w.user_id === userId
+      );
+      setWishlists(ownedWishlists);
       setFollowingWishlists(data.following || []);
-    } catch (error) {
-      console.error('Error loading wishlists:', error);
+    } catch (error: any) {
+      console.error("Error loading wishlists:", error);
+      if (error.message === "Unauthorized") {
+        handleLogout();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -67,13 +85,17 @@ export function WishlistDashboard({
   const handleCreateWishlist = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await createWishlist(accessToken, newWishlistName, newWishlistDescription);
-      setWishlists([...wishlists, data.wishlist]);
-      setNewWishlistName('');
-      setNewWishlistDescription('');
+      const data = await createWishlist(
+        accessToken,
+        newWishlistName,
+        newWishlistDescription
+      );
+      setWishlists([...wishlists, data]);
+      setNewWishlistName("");
+      setNewWishlistDescription("");
       setIsCreateDialogOpen(false);
     } catch (error) {
-      console.error('Error creating wishlist:', error);
+      console.error("Error creating wishlist:", error);
     }
   };
 
@@ -84,13 +106,32 @@ export function WishlistDashboard({
   };
 
   const handleWishlistUpdate = (updatedWishlist: Wishlist) => {
-    setWishlists(wishlists.map(w => w.id === updatedWishlist.id ? updatedWishlist : w));
+    const newWishlists = wishlists.map((w) =>
+      w.id === updatedWishlist.id ? updatedWishlist : w
+    );
+    setWishlists(newWishlists);
     setSelectedWishlist(updatedWishlist);
   };
 
   const handleWishlistDelete = (deletedId: string) => {
     setWishlists(wishlists.filter((w) => w.id !== deletedId));
     setSelectedWishlist(null);
+  };
+
+  const handleWishlistClick = async (wishlist: Wishlist, isOwned: boolean) => {
+    try {
+      setIsLoading(true);
+      const fullWishlist = await getWishlist(accessToken, wishlist.id);
+      setSelectedWishlist(fullWishlist);
+      setSelectedWishlistIsOwned(isOwned);
+    } catch (error) {
+      console.error("Error fetching wishlist details:", error);
+      // Fallback to existing data if fetch fails
+      setSelectedWishlist(wishlist);
+      setSelectedWishlistIsOwned(isOwned);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (selectedWishlist) {
@@ -112,7 +153,9 @@ export function WishlistDashboard({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="mb-1">Welcome, {userName}!</h1>
-            <p className="text-muted-foreground">Manage your wishlists and share them with friends</p>
+            <p className="text-muted-foreground">
+              Manage your wishlists and share them with friends
+            </p>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
@@ -121,7 +164,10 @@ export function WishlistDashboard({
         </div>
 
         <div className="mb-6">
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button size="lg">
                 <Plus className="mr-2 h-5 w-5" />
@@ -156,7 +202,9 @@ export function WishlistDashboard({
                     rows={3}
                   />
                 </div>
-                <Button type="submit" className="w-full">Create Wishlist</Button>
+                <Button type="submit" className="w-full">
+                  Create Wishlist
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -186,10 +234,7 @@ export function WishlistDashboard({
                     <Card
                       key={wishlist.id}
                       className="hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => {
-                        setSelectedWishlist(wishlist);
-                        setSelectedWishlistIsOwned(true);
-                      }}
+                      onClick={() => handleWishlistClick(wishlist, true)}
                     >
                       <CardHeader>
                         <CardTitle className="flex items-start justify-between">
@@ -225,10 +270,7 @@ export function WishlistDashboard({
                     <Card
                       key={wishlist.id}
                       className="hover:shadow-lg transition-shadow cursor-pointer border-pink-200"
-                      onClick={() => {
-                        setSelectedWishlist(wishlist);
-                        setSelectedWishlistIsOwned(false);
-                      }}
+                      onClick={() => handleWishlistClick(wishlist, false)}
                     >
                       <CardHeader>
                         <CardTitle className="flex items-start justify-between">

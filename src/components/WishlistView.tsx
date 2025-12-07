@@ -156,12 +156,11 @@ export function WishlistView({
 
   const handleImageSelect = async (itemId: string, imageUrl: string) => {
     if (!accessToken) return;
-
     try {
       const data = await updateItemImage(
         accessToken,
-        wishlist.id,
         itemId,
+        wishlist.id,
         imageUrl
       );
       if (onUpdate) {
@@ -184,14 +183,21 @@ export function WishlistView({
 
     setIsSubmitting(true);
     try {
-      const data = await addItem(accessToken, wishlist.id, {
+      const newItem = await addItem(accessToken, wishlist.id, {
         url: itemUrl,
         title: itemTitle,
         description: itemDescription,
       });
 
       if (onUpdate) {
-        onUpdate(data.wishlist);
+        const updatedWishlist = {
+          ...wishlist,
+          items: [
+            { ...newItem, addedAt: newItem.created_at || new Date().toISOString() },
+            ...(wishlist.items || []),
+          ],
+        };
+        onUpdate(updatedWishlist);
       }
 
       setItemUrl("");
@@ -209,18 +215,24 @@ export function WishlistView({
 
   const handleEditItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessToken || !editingItem) return;
+    if (!editingItem || !accessToken) return;
 
     setIsSubmitting(true);
     try {
-      const data = await updateItem(accessToken, wishlist.id, editingItem.id, {
+      const updatedItem = await updateItem(accessToken, wishlist.id, editingItem.id, {
         title: itemTitle,
         url: itemUrl,
         description: itemDescription,
       });
 
       if (onUpdate) {
-        onUpdate(data.wishlist);
+        const updatedWishlist = {
+          ...wishlist,
+          items: wishlist.items.map((item) =>
+            item.id === editingItem.id ? updatedItem : item
+          ),
+        };
+        onUpdate(updatedWishlist);
       }
 
       setEditingItem(null);
@@ -239,11 +251,16 @@ export function WishlistView({
 
   const handleDeleteItem = async (itemId: string) => {
     if (!accessToken) return;
-
     try {
-      const data = await deleteItem(accessToken, wishlist.id, itemId);
+      await deleteItem(accessToken, wishlist.id, itemId);
+      // Refetch wishlist data to update the UI
+      // This is a simple approach; a more optimized one would update the state directly
+      const updatedWishlist = {
+        ...wishlist,
+        items: wishlist.items.filter((item) => item.id !== itemId),
+      };
       if (onUpdate) {
-        onUpdate(data.wishlist);
+        onUpdate(updatedWishlist);
       }
       toast.success("Item removed from wishlist");
     } catch (error) {
@@ -254,19 +271,23 @@ export function WishlistView({
 
   const handleToggleClaim = async (itemId: string, claimed: boolean) => {
     if (!accessToken) return;
-
     try {
-      const data = await updateItemClaimed(
-        accessToken,
+      const updatedItem = await updateItemClaimed(
         wishlist.id,
         itemId,
-        claimed
+        !claimed
       );
       if (onUpdate) {
-        onUpdate(data.wishlist);
+        const updatedWishlist = {
+          ...wishlist,
+          items: wishlist.items.map((item) =>
+            item.id === itemId ? updatedItem : item
+          ),
+        };
+        onUpdate(updatedWishlist);
       }
       toast.success(
-        claimed ? "Item marked as purchased!" : "Item marked as available"
+        !claimed ? "Item marked as purchased!" : "Item marked as available"
       );
     } catch (error) {
       console.error("Error updating item claim status:", error);
@@ -281,7 +302,6 @@ export function WishlistView({
 
   const handleDeleteWishlist = async () => {
     if (!accessToken) return;
-
     try {
       await deleteWishlist(accessToken, wishlist.id);
       if (onDelete) {
@@ -428,7 +448,7 @@ export function WishlistView({
           {isOwner && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon">
+                <Button variant="destructive" size="icon" aria-label="Delete wishlist">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -489,7 +509,6 @@ export function WishlistView({
                 />
                 {isOwner && (
                   <ImageSelector
-                    accessToken={accessToken}
                     wishlistId={wishlist.id}
                     itemId={item.id}
                     currentImageUrl={item.image_url}
@@ -534,7 +553,7 @@ export function WishlistView({
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" aria-label="Delete item">
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </AlertDialogTrigger>
@@ -559,9 +578,9 @@ export function WishlistView({
                       </>
                     ) : (
                       <Button
-                        variant={item.claimed ? "secondary" : "primary"}
+                        variant={item.claimed ? "secondary" : "default"}
                         onClick={() =>
-                          handleToggleClaim(item.id, !item.claimed)
+                          handleToggleClaim(item.id, item.claimed)
                         }
                       >
                         {item.claimed ? (

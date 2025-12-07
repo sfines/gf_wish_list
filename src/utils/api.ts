@@ -165,3 +165,46 @@ export async function updateWishlist(
   }
   return data;
 }
+
+export async function followWishlist(accessToken: string, wishlistId: string) {
+  const { error } = await supabase.rpc("follow_wishlist", {
+    p_wishlist_id: wishlistId,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to follow wishlist");
+  }
+}
+
+export async function unfollowWishlist(accessToken: string, wishlistId: string) {
+  const { error } = await supabase.rpc("unfollow_wishlist", {
+    p_wishlist_id: wishlistId,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to unfollow wishlist");
+  }
+}
+
+export async function getFollowingStatus(
+  accessToken: string,
+  wishlistId: string
+) {
+  const { data, error } = await supabase.rpc("get_following_status", {
+    p_wishlist_id: wishlistId,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to get following status");
+  }
+  return data;
+}
+
+export async function getWishlists(accessToken: string) {
+  const { data, error } = await supabase.rpc("get_all_wishlists");
+
+  if (error) {
+    throw new Error(error.message || "Failed to get wishlists");
+  }
+  return data;
+}

@@ -5,7 +5,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Plus, Gift, LogOut, ExternalLink } from 'lucide-react';
+import {
+  Plus,
+  Gift,
+  LogOut,
+  ExternalLink,
+  Heart,
+} from "lucide-react";
 import { createWishlist, getWishlists } from '../utils/api';
 import { createClient } from '../utils/supabase-client';
 import { WishlistView } from './WishlistView';
@@ -25,9 +31,17 @@ interface WishlistDashboardProps {
   onLogout: () => void;
 }
 
-export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistDashboardProps) {
+export function WishlistDashboard({
+  accessToken,
+  userName,
+  onLogout,
+}: WishlistDashboardProps) {
   const [wishlists, setWishlists] = useState<Wishlist[]>([]);
-  const [selectedWishlist, setSelectedWishlist] = useState<Wishlist | null>(null);
+  const [followingWishlists, setFollowingWishlists] = useState<Wishlist[]>([]);
+  const [selectedWishlist, setSelectedWishlist] = useState<Wishlist | null>(
+    null
+  );
+  const [selectedWishlistIsOwned, setSelectedWishlistIsOwned] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newWishlistName, setNewWishlistName] = useState('');
@@ -42,6 +56,7 @@ export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistD
       setIsLoading(true);
       const data = await getWishlists(accessToken);
       setWishlists(data.wishlists || []);
+      setFollowingWishlists(data.following || []);
     } catch (error) {
       console.error('Error loading wishlists:', error);
     } finally {
@@ -74,7 +89,7 @@ export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistD
   };
 
   const handleWishlistDelete = (deletedId: string) => {
-    setWishlists(wishlists.filter(w => w.id !== deletedId));
+    setWishlists(wishlists.filter((w) => w.id !== deletedId));
     setSelectedWishlist(null);
   };
 
@@ -83,7 +98,7 @@ export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistD
       <WishlistView
         wishlist={selectedWishlist}
         accessToken={accessToken}
-        isOwner={true}
+        isOwner={selectedWishlistIsOwned}
         onBack={() => setSelectedWishlist(null)}
         onUpdate={handleWishlistUpdate}
         onDelete={handleWishlistDelete}
@@ -151,7 +166,7 @@ export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistD
           <div className="text-center py-12">
             <p className="text-muted-foreground">Loading wishlists...</p>
           </div>
-        ) : wishlists.length === 0 ? (
+        ) : wishlists.length === 0 && followingWishlists.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Gift className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -162,32 +177,81 @@ export function WishlistDashboard({ accessToken, userName, onLogout }: WishlistD
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {wishlists.map((wishlist) => (
-              <Card
-                key={wishlist.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => setSelectedWishlist(wishlist)}
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-start justify-between">
-                    <span className="line-clamp-1">{wishlist.name}</span>
-                    <Gift className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
-                  </CardTitle>
-                  {wishlist.description && (
-                    <CardDescription className="line-clamp-2">
-                      {wishlist.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{wishlist.items?.length || 0} items</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-8">
+            {wishlists.length > 0 && (
+              <div>
+                <h2 className="mb-4">My Wishlists</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {wishlists.map((wishlist) => (
+                    <Card
+                      key={wishlist.id}
+                      className="hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => {
+                        setSelectedWishlist(wishlist);
+                        setSelectedWishlistIsOwned(true);
+                      }}
+                    >
+                      <CardHeader>
+                        <CardTitle className="flex items-start justify-between">
+                          <span className="line-clamp-1">{wishlist.name}</span>
+                          <Gift className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
+                        </CardTitle>
+                        {wishlist.description && (
+                          <CardDescription className="line-clamp-2">
+                            {wishlist.description}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{wishlist.items?.length || 0} items</span>
+                          <ExternalLink className="h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {followingWishlists.length > 0 && (
+              <div>
+                <h2 className="mb-4 flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  Following
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {followingWishlists.map((wishlist) => (
+                    <Card
+                      key={wishlist.id}
+                      className="hover:shadow-lg transition-shadow cursor-pointer border-pink-200"
+                      onClick={() => {
+                        setSelectedWishlist(wishlist);
+                        setSelectedWishlistIsOwned(false);
+                      }}
+                    >
+                      <CardHeader>
+                        <CardTitle className="flex items-start justify-between">
+                          <span className="line-clamp-1">{wishlist.name}</span>
+                          <Heart className="h-5 w-5 text-pink-500 flex-shrink-0 ml-2" />
+                        </CardTitle>
+                        {wishlist.description && (
+                          <CardDescription className="line-clamp-2">
+                            {wishlist.description}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{wishlist.items?.length || 0} items</span>
+                          <ExternalLink className="h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

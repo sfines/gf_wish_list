@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -29,6 +29,8 @@ import {
   Circle,
   AlertCircle,
   Pencil,
+  Heart,
+  HeartOff,
 } from "lucide-react";
 import {
   addItem,
@@ -38,6 +40,9 @@ import {
   updateItem,
   updateWishlist,
   updateItemImage,
+  followWishlist,
+  unfollowWishlist,
+  getFollowingStatus,
 } from "../utils/api";
 import { toast } from "sonner";
 import {
@@ -104,8 +109,50 @@ export function WishlistView({
     wishlist.description
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const shareUrl = `${window.location.origin}?share=${wishlist.shareToken}`;
+
+  useEffect(() => {
+    const fetchFollowingStatus = async () => {
+      if (!accessToken || isOwner) return;
+
+      try {
+        const data = await getFollowingStatus(accessToken, wishlist.id);
+        setIsFollowing(data.is_following);
+      } catch (error) {
+        console.error("Error fetching following status:", error);
+      }
+    };
+
+    fetchFollowingStatus();
+  }, [accessToken, wishlist.id, isOwner]);
+
+  const handleFollowWishlist = async () => {
+    if (!accessToken) return;
+
+    try {
+      await followWishlist(accessToken, wishlist.id);
+      setIsFollowing(true);
+      toast.success("Wishlist followed");
+    } catch (error) {
+      console.error("Error following wishlist:", error);
+      toast.error("Failed to follow wishlist");
+    }
+  };
+
+  const handleUnfollowWishlist = async () => {
+    if (!accessToken) return;
+
+    try {
+      await unfollowWishlist(accessToken, wishlist.id);
+      setIsFollowing(false);
+      toast.success("Wishlist unfollowed");
+    } catch (error) {
+      console.error("Error unfollowing wishlist:", error);
+      toast.error("Failed to unfollow wishlist");
+    }
+  };
 
   const handleImageSelect = async (itemId: string, imageUrl: string) => {
     if (!accessToken) return;
@@ -401,6 +448,29 @@ export function WishlistView({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          )}
+          {!isOwner && accessToken && (
+            <>
+              {isFollowing ? (
+                <Button
+                  variant="outline"
+                  onClick={handleUnfollowWishlist}
+                  aria-label="Unfollow this wishlist"
+                >
+                  <HeartOff className="mr-2 h-4 w-4" />
+                  Unfollow
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={handleFollowWishlist}
+                  aria-label="Follow this wishlist"
+                >
+                  <Heart className="mr-2 h-4 w-4" />
+                  Follow
+                </Button>
+              )}
+            </>
           )}
         </div>
       </CardHeader>

@@ -11,7 +11,11 @@ export function ImageWithFallback(
   }, [src]);
 
   if (!src || hasError) {
-    return null;
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-muted text-muted-foreground">
+        <span className="text-xs">No Image</span>
+      </div>
+    );
   }
 
   const handleError = () => {

@@ -1,0 +1,85 @@
+
+Running 7 tests using 1 worker
+
+  ✓  1 tests/e2e.spec.ts:64:3 › Wishlist End-to-End Tests › user can sign up, create, and view a wishlist (4.9s)
+  ✓  2 tests/e2e.spec.ts:98:3 › Wishlist End-to-End Tests › user can update a wishlist item's title and description (8.3s)
+  ✓  3 tests/e2e.spec.ts:123:3 › Wishlist End-to-End Tests › user can delete a wishlist item (5.8s)
+  ✓  4 tests/e2e.spec.ts:146:3 › Wishlist End-to-End Tests › user can delete the wishlist itself (1.6s)
+  ✓  5 tests/e2e.spec.ts:165:3 › Wishlist End-to-End Tests › user can share a wishlist and another user can follow it (2.7s)
+PAGE LOG: [addItem] Called with item: {url: https://www.amazon.com/Michael-Kors-Malone-Billfol…&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1, title: Item with Images, description: Description}
+PAGE LOG: [addItem] Fetching OG image for URL: https://www.amazon.com/Michael-Kors-Malone-Billfold-Admiral/dp/B0DQRH6LR4/ref=hw_25_a_dag_fh_a47d?pf_rd_p=ba0cb436-0beb-41b0-be33-cd00f6578dc6&pf_rd_r=VNKVRSS60T853PCK3NP0&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1
+PAGE LOG: [fetchOgImage] Starting fetch for: https://www.amazon.com/Michael-Kors-Malone-Billfold-Admiral/dp/B0DQRH6LR4/ref=hw_25_a_dag_fh_a47d?pf_rd_p=ba0cb436-0beb-41b0-be33-cd00f6578dc6&pf_rd_r=VNKVRSS60T853PCK3NP0&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1
+PAGE LOG: [fetchOgImage] Detected Amazon URL, using RapidAPI
+PAGE LOG: [fetchAmazonImage] Fetching for ASIN: B0DQRH6LR4 country: us
+PAGE LOG: [fetchAmazonImage] Status: success Title: Michael Kors Malone Slim Billfold Wallet & Key Fob
+PAGE LOG: [fetchAmazonImage] Found images: [https://m.media-amazon.com/images/I/51VCmEhgD5L._AC_.jpg, https://m.media-amazon.com/images/I/316zQvmY8zL._AC_.jpg, https://m.media-amazon.com/images/I/518u-Qh153L._AC_.jpg]
+PAGE LOG: [addItem] Got ogImageUrl: https://m.media-amazon.com/images/I/51VCmEhgD5L._AC_.jpg
+PAGE LOG: Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+  ✘  6 tests/e2e.spec.ts:226:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item (11.4s)
+BROWSER LOG: [addItem] Called with item: {url: https://www.amazon.com/Michael-Kors-Malone-Billfol…&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1, title: Michael Kors Malone Billfold, description: A nice wallet}
+BROWSER LOG: [addItem] Fetching OG image for URL: https://www.amazon.com/Michael-Kors-Malone-Billfold-Admiral/dp/B0DQRH6LR4/ref=hw_25_a_dag_fh_a47d?pf_rd_p=ba0cb436-0beb-41b0-be33-cd00f6578dc6&pf_rd_r=VNKVRSS60T853PCK3NP0&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1
+BROWSER LOG: [fetchOgImage] Starting fetch for: https://www.amazon.com/Michael-Kors-Malone-Billfold-Admiral/dp/B0DQRH6LR4/ref=hw_25_a_dag_fh_a47d?pf_rd_p=ba0cb436-0beb-41b0-be33-cd00f6578dc6&pf_rd_r=VNKVRSS60T853PCK3NP0&sr=1-1-9f939889-605c-4811-ad2b-cc2695a8891a&th=1
+BROWSER LOG: [fetchOgImage] Detected Amazon URL, using RapidAPI
+BROWSER LOG: [fetchAmazonImage] Fetching for ASIN: B0DQRH6LR4 country: us
+Mocking RapidAPI response
+BROWSER LOG: [fetchAmazonImage] Status: success Title: undefined
+BROWSER LOG: [fetchAmazonImage] Found images: [https://m.media-amazon.com/images/I/51VCmEhgD5L._AC_.jpg, https://m.media-amazon.com/images/I/316zQvmY8zL._AC_.jpg, https://m.media-amazon.com/images/I/518u-Qh153L._AC_.jpg]
+BROWSER LOG: [addItem] Got ogImageUrl: https://m.media-amazon.com/images/I/51VCmEhgD5L._AC_.jpg
+BROWSER LOG: Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+  ✘  7 tests/e2e.spec.ts:277:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item (real product) (6.9s)
+
+
+  1) tests/e2e.spec.ts:226:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[aria-label="Image selection carousel"]')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[aria-label="Image selection carousel"]')[22m
+
+
+      219 |     // Verify carousel is visible
+      220 |     // Verify carousel is visible
+    > 221 |     await expect(page.locator('[aria-label="Image selection carousel"]')).toBeVisible();
+          |                                                                           ^
+      222 |
+      223 |     // Click next slide to see the second image
+      224 |     await page.getByRole("button", { name: "Next slide" }).click();
+        at /Users/sfines/workspace/gf_wish_list/tests/e2e.spec.ts:221:75
+
+    Error Context: test-results/e2e-Wishlist-End-to-End-Te-4c8dc-t-image-for-a-wishlist-item/error-context.md
+
+  2) tests/e2e.spec.ts:277:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item (real product) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[aria-label="Image selection carousel"]')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[aria-label="Image selection carousel"]')[22m
+
+
+      280 |     // Verify carousel is visible
+      281 |     // Verify carousel is visible
+    > 282 |     await expect(page.locator('[aria-label="Image selection carousel"]')).toBeVisible();
+          |                                                                           ^
+      283 |
+      284 |     // Click "Next slide"
+      285 |     await page.getByRole("button", { name: "Next slide" }).click();
+        at /Users/sfines/workspace/gf_wish_list/tests/e2e.spec.ts:282:75
+
+    Error Context: test-results/e2e-Wishlist-End-to-End-Te-06d82-wishlist-item-real-product-/error-context.md
+
+  2 failed
+    tests/e2e.spec.ts:226:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item 
+    tests/e2e.spec.ts:277:3 › Wishlist End-to-End Tests › user can select a different image for a wishlist item (real product) 
+  5 passed (42.5s)

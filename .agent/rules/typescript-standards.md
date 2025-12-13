@@ -225,4 +225,3 @@ repos:
 5.  Turn on incremental type checking via `pnpm typecheck` with `strict` toggles per module.
 6.  Add CI gating: lint → format → typecheck → test.
 7.  Incrementally enforce `noImplicitAny` with a targeted schedule.
-

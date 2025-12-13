@@ -27,7 +27,6 @@ import {
   Copy,
   CheckCircle2,
   Circle,
-  AlertCircle,
   Pencil,
   Heart,
   HeartOff,
@@ -39,7 +38,6 @@ import {
   updateItemClaimed,
   updateItem,
   updateWishlist,
-  updateItemImage,
   followWishlist,
   unfollowWishlist,
   getFollowingStatus,
@@ -56,7 +54,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
-import ImageSelector from "./figma/ImageSelector";
+import { WishlistItemDialog, WishlistItemFormData } from "./WishlistItemDialog";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface WishlistItem {
@@ -100,18 +98,18 @@ export function WishlistView({
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false);
+  // const [isImageSelectorOpen, setIsImageSelectorOpen] = useState(false); // Removed
   const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
-  const [itemUrl, setItemUrl] = useState("");
-  const [itemTitle, setItemTitle] = useState("");
-  const [itemDescription, setItemDescription] = useState("");
   const [wishlistName, setWishlistName] = useState(wishlist.name);
   const [wishlistDescription, setWishlistDescription] = useState(
     wishlist.description
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Still used for Wishlist Edit
   const [isFollowing, setIsFollowing] = useState(false);
 
   const shareUrl = `${window.location.origin}?share=${wishlist.share_token}`;
+
+
 
   useEffect(() => {
     const fetchFollowingStatus = async () => {
@@ -154,40 +152,24 @@ export function WishlistView({
     }
   };
 
-  const handleImageSelect = async (itemId: string, imageUrl: string) => {
-    if (!accessToken) return;
-    try {
-      const data = await updateItemImage(
-        accessToken,
-        itemId,
-        wishlist.id,
-        imageUrl
-      );
-      if (onUpdate) {
-        onUpdate(data.wishlist);
-      }
-      toast.success("Item image updated!");
-    } catch (error) {
-      console.error("Error updating item image:", error);
-      toast.error("Failed to update item image.");
-    }
-  };
+
 
   const sortedItems = wishlist.items.sort(
     (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
   );
 
-  const handleAddItem = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddItem = async (data: WishlistItemFormData) => {
     if (!accessToken) return;
 
-    setIsSubmitting(true);
     try {
       const newItem = await addItem(accessToken, wishlist.id, {
-        url: itemUrl,
-        title: itemTitle,
-        description: itemDescription,
+        url: data.url,
+        title: data.title,
+        description: data.description,
+        image_url: data.image_url,
+        image_urls: data.image_urls,
       });
+      console.log("New Item Added:", newItem);
 
       if (onUpdate) {
         const updatedWishlist = {
@@ -203,33 +185,27 @@ export function WishlistView({
         onUpdate(updatedWishlist);
       }
 
-      setItemUrl("");
-      setItemTitle("");
-      setItemDescription("");
       setIsAddDialogOpen(false);
       toast.success("Item added to wishlist!");
     } catch (error) {
       console.error("Error adding item:", error);
       toast.error("Failed to add item");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleEditItem = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditItem = async (data: WishlistItemFormData) => {
     if (!editingItem || !accessToken) return;
 
-    setIsSubmitting(true);
     try {
       const updatedItem = await updateItem(
         accessToken,
         wishlist.id,
         editingItem.id,
         {
-          title: itemTitle,
-          url: itemUrl,
-          description: itemDescription,
+          title: data.title,
+          url: data.url,
+          description: data.description,
+          image_url: data.image_url,
         }
       );
 
@@ -244,16 +220,11 @@ export function WishlistView({
       }
 
       setEditingItem(null);
-      setItemUrl("");
-      setItemTitle("");
-      setItemDescription("");
       setIsEditDialogOpen(false);
       toast.success("Item updated!");
     } catch (error) {
       console.error("Error updating item:", error);
       toast.error("Failed to update item");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -376,60 +347,12 @@ export function WishlistView({
                   <Plus className="mr-2 h-4 w-4" /> Add Item
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add a new item</DialogTitle>
-                  <DialogDescription>
-                    Enter the details of the item you want to add to your
-                    wishlist.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddItem}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="item-url" className="text-right">
-                        URL
-                      </Label>
-                      <Input
-                        id="item-url"
-                        value={itemUrl}
-                        onChange={(e) => setItemUrl(e.target.value)}
-                        className="col-span-3"
-                        placeholder="https://example.com/product"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="item-title" className="text-right">
-                        Title
-                      </Label>
-                      <Input
-                        id="item-title"
-                        value={itemTitle}
-                        onChange={(e) => setItemTitle(e.target.value)}
-                        className="col-span-3"
-                        placeholder="A cool product"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="item-description" className="text-right">
-                        Description
-                      </Label>
-                      <Textarea
-                        id="item-description"
-                        value={itemDescription}
-                        onChange={(e) => setItemDescription(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Any specific details, like size or color"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Adding..." : "Add Item"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
+              <WishlistItemDialog
+                open={isAddDialogOpen}
+                onOpenChange={setIsAddDialogOpen}
+                mode="add"
+                onSubmit={handleAddItem}
+              />
             </Dialog>
           )}
           <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
@@ -517,17 +440,9 @@ export function WishlistView({
                 <ImageWithFallback
                   src={item.image_url}
                   alt={item.title || "Item preview"}
-                  className="w-24 h-24 object-cover rounded-md"
+                  className="object-cover rounded-md"
+                  style={{ width: "100px", height: "100px", minWidth: "100px", minHeight: "100px" }}
                 />
-                {isOwner && (
-                  <ImageSelector
-                    wishlistId={wishlist.id}
-                    itemId={item.id}
-                    currentImageUrl={item.image_url}
-                    suggestedImageUrls={item.image_urls}
-                    onImageSelect={handleImageSelect}
-                  />
-                )}
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
@@ -553,11 +468,9 @@ export function WishlistView({
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Edit item"
                           onClick={() => {
                             setEditingItem(item);
-                            setItemTitle(item.title);
-                            setItemUrl(item.url);
-                            setItemDescription(item.description);
                             setIsEditDialogOpen(true);
                           }}
                         >
@@ -616,55 +529,25 @@ export function WishlistView({
           ))}
         </div>
       </CardContent>
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Item</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditItem}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-item-title" className="text-right">
-                  Title
-                </Label>
-                <Input
-                  id="edit-item-title"
-                  value={itemTitle}
-                  onChange={(e) => setItemTitle(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-item-url" className="text-right">
-                  URL
-                </Label>
-                <Input
-                  id="edit-item-url"
-                  value={itemUrl}
-                  onChange={(e) => setItemUrl(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-item-description" className="text-right">
-                  Description
-                </Label>
-                <Textarea
-                  id="edit-item-description"
-                  value={itemDescription}
-                  onChange={(e) => setItemDescription(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <WishlistItemDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        mode="edit"
+        initialData={
+          editingItem
+            ? {
+              url: editingItem.url,
+              title: editingItem.title,
+              description: editingItem.description,
+              image_url: editingItem.image_url,
+              image_urls: editingItem.image_urls,
+            }
+            : undefined
+        }
+        onSubmit={handleEditItem}
+      />
+
+
 
       <Dialog
         open={isEditTitleDialogOpen}
@@ -673,6 +556,9 @@ export function WishlistView({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Wishlist Details</DialogTitle>
+            <DialogDescription>
+              Update your wishlist name and description.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditWishlist}>
             <div className="grid gap-4 py-4">

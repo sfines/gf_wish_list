@@ -107,29 +107,36 @@ export async function getSharedWishlist(shareToken: string) {
 export async function addItem(
   accessToken: string,
   wishlistId: string,
-  item: { url?: string; description?: string; title?: string }
+  item: {
+    url?: string;
+    description?: string;
+    title?: string;
+    image_url?: string;
+    image_urls?: string[];
+  }
 ) {
-  console.log("[addItem] Called with item:", item);
-
   // Fetch OG image client-side before sending to API
-  let ogImageUrl = "";
-  let image_urls: string[] = [];
+  let ogImageUrl = item.image_url || "";
+  let image_urls: string[] = item.image_urls || [];
 
-  if (item.url) {
-    console.log("[addItem] Fetching OG image for URL:", item.url);
+  if (item.url && image_urls.length === 0) {
     try {
       const images = await fetchOgImage(item.url);
       if (images && images.length > 0) {
         image_urls = images;
-        ogImageUrl = images[0];
+        // If we didn't have a specific image selected, use the first one
+        if (!ogImageUrl) {
+          ogImageUrl = images[0];
+        }
       }
-      console.log("[addItem] Got ogImageUrl:", ogImageUrl);
     } catch (error) {
       console.warn("[addItem] Failed to fetch OG image:", error);
     }
   } else {
-    console.log("[addItem] No URL provided, skipping OG image fetch");
+    // console.log("[addItem] No URL provided, skipping OG image fetch");
   }
+
+  const body = JSON.stringify({ ...item, ogImageUrl, image_urls });
 
   const response = await fetch(
     `${API_BASE_URL}/wishlists/${wishlistId}/items`,
@@ -139,7 +146,7 @@ export async function addItem(
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ ...item, ogImageUrl, image_urls }),
+      body: body,
     }
   );
 
@@ -147,6 +154,18 @@ export async function addItem(
   if (!response.ok) {
     throw new Error(data.error || "Failed to add item");
   }
+
+  // Polyfill image_urls if backend dropped them but we have them generated client-side
+  if (
+    (!data.image_urls || data.image_urls.length === 0) &&
+    image_urls.length > 0
+  ) {
+    console.warn(
+      "[addItem] Backend missing image_urls, polyfilling from request"
+    );
+    data.image_urls = image_urls;
+  }
+
   return data;
 }
 
@@ -176,10 +195,10 @@ export async function updateItem(
   accessToken: string,
   wishlistId: string,
   itemId: string,
-  updates: { title?: string; url?: string; description?: string }
+  updates: { title?: string; url?: string; description?: string; image_url?: string }
 ) {
   // Fetch OG image client-side if URL changed
-  let ogImageUrl: string | undefined;
+  let ogImageUrl: string | undefined = updates.image_url;
   let image_urls: string[] | undefined;
 
   if (updates.url) {
@@ -187,14 +206,19 @@ export async function updateItem(
       const images = await fetchOgImage(updates.url);
       if (images && images.length > 0) {
         image_urls = images;
-        ogImageUrl = images[0];
+        // Only override if we don't have a specific one (or if the URL changed and implies a reset, but usually explicit selection wins)
+        // However, if URL changes, we might want to reset the image? 
+        // For now, let's prioritize the passed image_url if it exists.
+        if (!ogImageUrl) {
+          ogImageUrl = images[0];
+        }
       } else {
-        ogImageUrl = "";
+        if (!ogImageUrl) ogImageUrl = ""; // clear if NO images found and no explicit one
         image_urls = [];
       }
     } catch (error) {
       console.warn("Failed to fetch OG image:", error);
-      ogImageUrl = "";
+      if (!ogImageUrl) ogImageUrl = "";
       image_urls = [];
     }
   }
@@ -207,6 +231,10 @@ export async function updateItem(
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
+      // Pass ogImageUrl as 'image_url' or 'ogImageUrl' depending on what the backend expects?
+      // The backend 'updateItem' likely looks for 'ogImageUrl' or 'image_url'.
+      // Looking at 'addItem', we sent 'ogImageUrl'. 
+      // Let's assume consistent backend.
       body: JSON.stringify({ ...updates, ogImageUrl, image_urls }),
     }
   );

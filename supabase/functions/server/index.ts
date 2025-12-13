@@ -185,13 +185,15 @@ serve(async (req) => {
     const itemsMatch = path.match(/^\/wishlists\/([^/]+)\/items$/);
     if (req.method === "POST" && itemsMatch) {
       const wishlistId = itemsMatch[1];
+      const body = await req.json();
+      console.log("POST /items body:", JSON.stringify(body));
       const {
         url: itemUrl,
         description,
         title,
         ogImageUrl,
         image_urls,
-      } = await req.json();
+      } = body;
 
       const { data, error } = await supabaseClient
         .from("items")
@@ -205,6 +207,9 @@ serve(async (req) => {
         })
         .select()
         .single();
+      
+      console.log("POST /items result:", JSON.stringify(data));
+      if (error) console.error("POST /items error:", error);
 
       if (error) throw error;
       return new Response(JSON.stringify(data), {

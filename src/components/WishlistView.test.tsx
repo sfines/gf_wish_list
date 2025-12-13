@@ -9,10 +9,47 @@ const mockWishlist = {
   id: "1",
   name: "Test Wishlist",
   description: "A test wishlist",
-  shareToken: "abc123",
+  share_token: "abc123",
   items: [],
-  createdAt: new Date().toISOString(),
+  created_at: new Date().toISOString(),
 };
+// ... (skip down to the new test case assertion)
+
+it("shows 'Change Image' button when editing an item with multiple images", async () => {
+  const wishlistWithImages = {
+    ...mockWishlist,
+    items: [
+      {
+        id: "item-images",
+        title: "Item with Images",
+        description: "Description",
+        url: "https://example.com/product",
+        addedAt: new Date().toISOString(),
+        claimed: false,
+        image_url: "img1.jpg",
+        image_urls: ["img1.jpg", "img2.jpg"],
+      },
+    ],
+  };
+
+  render(
+    <WishlistView
+      wishlist={wishlistWithImages}
+      isOwner={true}
+      accessToken="test-token"
+      onBack={() => { }}
+      onUpdate={() => { }}
+      onDelete={() => { }}
+    />
+  );
+
+  // Click edit button for the item
+  const editButton = screen.getByLabelText("Edit item");
+  fireEvent.click(editButton);
+
+  // Verify "Change Image" button is present
+  expect(screen.getByText("Change Image")).toBeInTheDocument();
+});
 
 describe("WishlistView", () => {
   beforeEach(() => {
@@ -24,9 +61,9 @@ describe("WishlistView", () => {
       <WishlistView
         wishlist={mockWishlist}
         isOwner={true}
-        onBack={() => {}}
-        onUpdate={() => {}}
-        onDelete={() => {}}
+        onBack={() => { }}
+        onUpdate={() => { }}
+        onDelete={() => { }}
       />
     );
 
@@ -57,9 +94,9 @@ describe("WishlistView", () => {
         wishlist={mockWishlist}
         isOwner={true}
         accessToken="test-token"
-        onBack={() => {}}
+        onBack={() => { }}
         onUpdate={onUpdate}
-        onDelete={() => {}}
+        onDelete={() => { }}
       />
     );
 
@@ -104,9 +141,9 @@ describe("WishlistView", () => {
         wishlist={wishlistWithItem}
         isOwner={true}
         accessToken="test-token"
-        onBack={() => {}}
+        onBack={() => { }}
         onUpdate={onUpdate}
-        onDelete={() => {}}
+        onDelete={() => { }}
       />
     );
 
@@ -147,9 +184,9 @@ describe("WishlistView", () => {
         wishlist={wishlistWithItem}
         isOwner={false}
         accessToken="test-token"
-        onBack={() => {}}
+        onBack={() => { }}
         onUpdate={onUpdate}
-        onDelete={() => {}}
+        onDelete={() => { }}
       />
     );
 
@@ -179,12 +216,48 @@ describe("WishlistView", () => {
       <WishlistView
         wishlist={wishlistWithItem}
         isOwner={true}
-        onBack={() => {}}
-        onUpdate={() => {}}
-        onDelete={() => {}}
+        onBack={() => { }}
+        onUpdate={() => { }}
+        onDelete={() => { }}
       />
     );
 
     expect(screen.queryByText("Mark as Purchased")).not.toBeInTheDocument();
+  });
+
+  it("shows 'Change Image' button when editing an item with multiple images", async () => {
+    const wishlistWithImages = {
+      ...mockWishlist,
+      items: [
+        {
+          id: "item-images",
+          title: "Item with Images",
+          description: "Description",
+          url: "https://example.com/product",
+          addedAt: new Date().toISOString(),
+          claimed: false,
+          image_url: "img1.jpg",
+          image_urls: ["img1.jpg", "img2.jpg"],
+        },
+      ],
+    };
+
+    render(
+      <WishlistView
+        wishlist={wishlistWithImages}
+        isOwner={true}
+        accessToken="test-token"
+        onBack={() => { }}
+        onUpdate={() => { }}
+        onDelete={() => { }}
+      />
+    );
+
+    // Click edit button for the item
+    const editButton = screen.getByLabelText("Edit item");
+    fireEvent.click(editButton);
+
+    // Verify "Change Image" button is present
+    expect(screen.getByText("Change Image")).toBeInTheDocument();
   });
 });

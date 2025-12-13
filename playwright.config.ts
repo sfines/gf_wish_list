@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   use: {
-    baseURL: "http://localhost:8092",
+    baseURL: process.env.BASE_URL || "http://localhost:8092",
     browserName: "chromium",
     headless: true,
   },

@@ -23,13 +23,16 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession();
       
       // Check if we're in password reset mode
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const type = hashParams.get('type');
-      
-      if (type === 'recovery') {
-        setIsResetPasswordMode(true);
-        setIsLoading(false);
-        return;
+      const hash = window.location.hash;
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const type = hashParams.get('type');
+        
+        if (type === 'recovery') {
+          setIsResetPasswordMode(true);
+          setIsLoading(false);
+          return;
+        }
       }
       
       if (session) {
@@ -102,6 +105,12 @@ export default function App() {
     }
   };
 
+  const handleResetPasswordCancel = () => {
+    setIsResetPasswordMode(false);
+    // Clear the hash from URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -114,7 +123,7 @@ export default function App() {
   if (isResetPasswordMode) {
     return (
       <>
-        <ResetPassword onSuccess={handleResetPasswordSuccess} />
+        <ResetPassword onSuccess={handleResetPasswordSuccess} onCancel={handleResetPasswordCancel} />
         <Toaster />
       </>
     );

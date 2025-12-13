@@ -29,11 +29,28 @@ You can also customize the email templates to ensure they use the correct domain
 
 The `{{ .SiteURL }}` variable will use the Site URL configured in step 1.
 
+## Environment Configuration
+
+The application uses an environment variable to configure the redirect URL:
+
+1. Copy `.env.example` to `.env.local`
+2. Set `VITE_APP_URL` to your domain (defaults to `https://wishlist.goodandfine.com`)
+
+For local development:
+```
+VITE_APP_URL=http://localhost:5173
+```
+
+For production:
+```
+VITE_APP_URL=https://wishlist.goodandfine.com
+```
+
 ## How It Works
 
 1. When a user requests a password reset, the application calls `supabase.auth.resetPasswordForEmail()` with:
    ```typescript
-   redirectTo: 'https://wishlist.goodandfine.com/reset-password'
+   redirectTo: PASSWORD_RESET_REDIRECT_URL  // Configured from VITE_APP_URL env var
    ```
 
 2. Supabase sends an email with a link to the specified `redirectTo` URL with authentication tokens in the URL hash.
@@ -62,3 +79,5 @@ To test the password reset flow:
 - Both HTTP and HTTPS redirect URLs should be configured if needed
 - For development, you may want to add `http://localhost:5173/reset-password` to the Redirect URLs
 - The password reset link expires after a certain time (configurable in Supabase settings)
+- The `VITE_APP_URL` environment variable should match the domain configured in Supabase
+- Make sure to set the environment variable in your deployment platform (Vercel, Netlify, etc.)

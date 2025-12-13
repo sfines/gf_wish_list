@@ -7,9 +7,10 @@ import { createClient } from '../utils/supabase-client';
 
 interface ResetPasswordProps {
   onSuccess: () => void;
+  onCancel: () => void;
 }
 
-export function ResetPassword({ onSuccess }: ResetPasswordProps) {
+export function ResetPassword({ onSuccess, onCancel }: ResetPasswordProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +20,15 @@ export function ResetPassword({ onSuccess }: ResetPasswordProps) {
   useEffect(() => {
     // Check if we have a valid reset token
     const checkToken = async () => {
+      // Verify the URL contains a recovery type parameter
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+      
+      if (type !== 'recovery') {
+        setIsValidToken(false);
+        return;
+      }
+      
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -82,7 +92,7 @@ export function ResetPassword({ onSuccess }: ResetPasswordProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => window.location.href = '/'} className="w-full">
+            <Button onClick={onCancel} className="w-full">
               Back to Sign In
             </Button>
           </CardContent>

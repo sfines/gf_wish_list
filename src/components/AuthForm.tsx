@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { createClient } from '../utils/supabase-client';
 import { signUp } from '../utils/api';
+import { PASSWORD_RESET_REDIRECT_URL } from '../config/auth';
 
 interface AuthFormProps {
   onAuthSuccess: (accessToken: string, userName: string) => void;
@@ -90,7 +91,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: 'https://wishlist.goodandfine.com/reset-password',
+        redirectTo: PASSWORD_RESET_REDIRECT_URL,
       });
 
       if (error) throw error;

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { AuthForm } from './components/AuthForm';
 import { WishlistDashboard } from './components/WishlistDashboard';
 import { WishlistView } from './components/WishlistView';
+import { ResetPassword } from './components/ResetPassword';
 import { createClient } from './utils/supabase-client';
 import { getSharedWishlist } from './utils/api';
 import { Toaster } from './components/ui/sonner';
+import { toast } from 'sonner';
 
 export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -12,12 +14,23 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [sharedWishlist, setSharedWishlist] = useState<any>(null);
   const [isLoadingShared, setIsLoadingShared] = useState(false);
+  const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
 
   useEffect(() => {
-    // Check for existing session
+    // Check for existing session and password reset mode
     const checkSession = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // Check if we're in password reset mode
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+      
+      if (type === 'recovery') {
+        setIsResetPasswordMode(true);
+        setIsLoading(false);
+        return;
+      }
       
       if (session) {
         setAccessToken(session.access_token);
@@ -72,11 +85,38 @@ export default function App() {
     setSharedWishlist(updatedWishlist);
   };
 
+  const handleResetPasswordSuccess = async () => {
+    toast.success('Password reset successfully!');
+    setIsResetPasswordMode(false);
+    
+    // Clear the hash from URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    // Get the new session after password reset
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      setAccessToken(session.access_token);
+      setUserName(session.user?.user_metadata?.name || 'User');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <p className="text-muted-foreground">Loading...</p>
       </div>
+    );
+  }
+
+  // Show password reset page if in reset mode
+  if (isResetPasswordMode) {
+    return (
+      <>
+        <ResetPassword onSuccess={handleResetPasswordSuccess} />
+        <Toaster />
+      </>
     );
   }
 

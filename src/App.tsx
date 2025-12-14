@@ -21,9 +21,7 @@ const App = () => {
   useEffect(() => {
     // Check for existing session and password reset mode
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      // Check if we're in password reset mode
+      // Check if we're in password reset mode immediately, before any async calls
       const hash = window.location.hash;
       if (hash) {
         const hashParams = new URLSearchParams(hash.substring(1));
@@ -35,6 +33,8 @@ const App = () => {
           return;
         }
       }
+
+      const { data: { session } } = await supabase.auth.getSession();
 
       setSession(session);
       setIsLoading(false);

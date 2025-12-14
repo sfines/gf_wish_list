@@ -15,41 +15,6 @@ const mockWishlist = {
 };
 // ... (skip down to the new test case assertion)
 
-it("shows 'Change Image' button when editing an item with multiple images", async () => {
-  const wishlistWithImages = {
-    ...mockWishlist,
-    items: [
-      {
-        id: "item-images",
-        title: "Item with Images",
-        description: "Description",
-        url: "https://example.com/product",
-        addedAt: new Date().toISOString(),
-        claimed: false,
-        image_url: "img1.jpg",
-        image_urls: ["img1.jpg", "img2.jpg"],
-      },
-    ],
-  };
-
-  render(
-    <WishlistView
-      wishlist={wishlistWithImages}
-      isOwner={true}
-      accessToken="test-token"
-      onBack={() => { }}
-      onUpdate={() => { }}
-      onDelete={() => { }}
-    />
-  );
-
-  // Click edit button for the item
-  const editButton = screen.getByLabelText("Edit item");
-  fireEvent.click(editButton);
-
-  // Verify "Change Image" button is present
-  expect(screen.getByText("Change Image")).toBeInTheDocument();
-});
 
 describe("WishlistView", () => {
   beforeEach(() => {
@@ -114,6 +79,8 @@ describe("WishlistView", () => {
         title: "New Item",
         description: "",
         url: "",
+        image_url: "",
+        image_urls: [],
       });
       expect(onUpdate).toHaveBeenCalled();
     });
@@ -225,7 +192,7 @@ describe("WishlistView", () => {
     expect(screen.queryByText("Mark as Purchased")).not.toBeInTheDocument();
   });
 
-  it("shows 'Change Image' button when editing an item with multiple images", async () => {
+  it("shows image selection carousel when editing an item with multiple images", async () => {
     const wishlistWithImages = {
       ...mockWishlist,
       items: [
@@ -257,7 +224,7 @@ describe("WishlistView", () => {
     const editButton = screen.getByLabelText("Edit item");
     fireEvent.click(editButton);
 
-    // Verify "Change Image" button is present
-    expect(screen.getByText("Change Image")).toBeInTheDocument();
+    // Verify Image Carousel is present
+    expect(screen.getByLabelText("Image selection carousel")).toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
 
 -- Create a table to track followers
 CREATE TABLE IF NOT EXISTS wishlist_followers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wishlist_id UUID NOT NULL REFERENCES wishlists(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),

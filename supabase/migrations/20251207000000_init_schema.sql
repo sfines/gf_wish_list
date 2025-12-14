@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create wishlists table
 CREATE TABLE IF NOT EXISTS wishlists (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS wishlists (
 
 -- Create items table
 CREATE TABLE IF NOT EXISTS items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wishlist_id UUID NOT NULL REFERENCES wishlists(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,

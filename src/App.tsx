@@ -7,50 +7,55 @@ import { createClient } from './utils/supabase-client';
 import { getSharedWishlist } from './utils/api';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+import { Session } from "@supabase/supabase-js";
 
-export default function App() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
+const supabase = createClient();
+
+const App = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [sharedWishlist, setSharedWishlist] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [sharedWishlist, setSharedWishlist] = useState<any>(null);
   const [isLoadingShared, setIsLoadingShared] = useState(false);
   const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
 
   useEffect(() => {
     // Check for existing session and password reset mode
     const checkSession = async () => {
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       // Check if we're in password reset mode
       const hash = window.location.hash;
       if (hash) {
         const hashParams = new URLSearchParams(hash.substring(1));
         const type = hashParams.get('type');
-        
+
         if (type === 'recovery') {
           setIsResetPasswordMode(true);
           setIsLoading(false);
           return;
         }
       }
-      
-      if (session) {
-        setAccessToken(session.access_token);
-        setUserName(session.user?.user_metadata?.name || 'User');
-      }
-      
+
+      setSession(session);
       setIsLoading(false);
     };
 
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsLoading(false);
+    });
+
     checkSession();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    // Check for shared wishlist in URL
     const params = new URLSearchParams(window.location.search);
-    const shareToken = params.get('share');
-    
+    const shareToken = params.get("share");
+
     if (shareToken) {
       loadSharedWishlist(shareToken);
     }
@@ -68,16 +73,6 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = (token: string, name: string) => {
-    setAccessToken(token);
-    setUserName(name);
-  };
-
-  const handleLogout = () => {
-    setAccessToken(null);
-    setUserName('');
-  };
-
   const handleBackFromShared = () => {
     setSharedWishlist(null);
     // Remove share token from URL
@@ -91,18 +86,13 @@ export default function App() {
   const handleResetPasswordSuccess = async () => {
     toast.success('Password reset successfully!');
     setIsResetPasswordMode(false);
-    
+
     // Clear the hash from URL
     window.history.replaceState({}, document.title, window.location.pathname);
-    
+
     // Get the new session after password reset
-    const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) {
-      setAccessToken(session.access_token);
-      setUserName(session.user?.user_metadata?.name || 'User');
-    }
+    setSession(session);
   };
 
   const handleResetPasswordCancel = () => {
@@ -113,8 +103,8 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
       </div>
     );
   }
@@ -133,39 +123,55 @@ export default function App() {
   if (sharedWishlist) {
     if (isLoadingShared) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-          <p className="text-muted-foreground">Loading wishlist...</p>
+        <div className="flex items-center justify-center min-h-screen">
+          Loading wishlist...
         </div>
       );
     }
-    
+
+    const isOwner = session?.user?.id === sharedWishlist.user_id;
     return (
-      <>
-        <WishlistView
-          wishlist={sharedWishlist}
-          accessToken={accessToken || undefined}
-          isOwner={false}
-          onBack={handleBackFromShared}
-          onUpdate={handleSharedWishlistUpdate}
-        />
+      <div className="min-h-screen bg-gray-100">
+        <div className="container mx-auto p-4">
+          <WishlistView
+            wishlist={sharedWishlist}
+            accessToken={session?.access_token}
+            isOwner={isOwner}
+            onBack={handleBackFromShared}
+            onUpdate={handleSharedWishlistUpdate}
+            onDelete={() => setSharedWishlist(null)}
+          />
+        </div>
         <Toaster />
-      </>
+      </div>
     );
   }
 
-  // Show auth or dashboard
-  if (!accessToken) {
-    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+  if (!session) {
+    return (
+      <AuthForm
+        onAuthSuccess={() => {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+          });
+        }}
+      />
+    );
   }
 
   return (
-    <>
-      <WishlistDashboard
-        accessToken={accessToken}
-        userName={userName}
-        onLogout={handleLogout}
-      />
-      <Toaster />
-    </>
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto p-4">
+        <WishlistDashboard
+          accessToken={session.access_token}
+          userName={session.user.user_metadata.full_name || session.user.email || 'User'}
+          userId={session.user.id}
+          onLogout={() => supabase.auth.signOut()}
+        />
+        <Toaster />
+      </div>
+    </div>
   );
-}
+};
+
+export default App;

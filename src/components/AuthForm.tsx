@@ -9,7 +9,7 @@ import { signUp } from '../utils/api';
 import { PASSWORD_RESET_REDIRECT_URL } from '../config/auth';
 
 interface AuthFormProps {
-  onAuthSuccess: (accessToken: string, userName: string) => void;
+  onAuthSuccess: () => void;
 }
 
 export function AuthForm({ onAuthSuccess }: AuthFormProps) {
@@ -18,11 +18,11 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const [successMessage, setSuccessMessage] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
-  
+
   // Sign in form
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
-  
+
   // Sign up form
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
@@ -43,8 +43,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       if (error) throw error;
 
       if (data.session) {
-        const userName = data.user?.user_metadata?.name || 'User';
-        onAuthSuccess(data.session.access_token, userName);
+        onAuthSuccess();
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
@@ -61,7 +60,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 
     try {
       await signUp(signUpEmail, signUpPassword, signUpName);
-      
+
       // Auto sign in after signup
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -72,7 +71,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       if (error) throw error;
 
       if (data.session) {
-        onAuthSuccess(data.session.access_token, signUpName);
+        onAuthSuccess();
       }
     } catch (err: any) {
       console.error('Sign up error:', err);
@@ -161,7 +160,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
@@ -202,7 +201,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">

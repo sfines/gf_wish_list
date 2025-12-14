@@ -1,0 +1,43 @@
+{
+  "servers": {
+    "local-memory": {
+      "command": "/usr/local/bin/local-memory",
+      "args": ["--mcp"],
+      "type": "stdio"
+    },
+    "docs-mcp-server": {
+      "command": "npx",
+      "args": ["@arabold/docs-mcp-server@latest"],
+      "env": {
+        "OPENAI_API_KEY": "ollama",
+        "OPENAI_API_BASE": "http://localhost:11434/v1",
+        "DOCS_MCP_EMBEDDING_MODEL": "nomic-embed-text"
+      },
+      "type": "stdio"
+    },
+    "io.github.github/github-mcp-server": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "gallery": "https://api.mcp.github.com",
+      "version": "0.21.1"
+    },
+    "figma": {
+      "url": "https://mcp.figma.com/mcp",
+      "type": "http"
+    }
+  },
+  "inputs": [
+    {
+      "id": "Authorization",
+      "type": "promptString",
+      "description": "Authentication token (PAT or App token)",
+      "password": true
+    },
+    {
+      "id": "FigmaToken",
+      "type": "promptString",
+      "description": "Figma Personal Access Token",
+      "password": true
+    }
+  ]
+}

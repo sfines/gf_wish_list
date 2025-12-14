@@ -9,8 +9,8 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "isolatedModules": true,
-    "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
 
@@ -20,13 +20,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Path aliases */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["src/supabase/functions/server"],
+  "include": ["src", "src/test/setup.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -1,12 +1,27 @@
-import { projectId, publicAnonKey } from './supabase/info';
+import { fetchOgImage } from "./fetchOgImage";
+import {
+  projectId as prodProjectId,
+  publicAnonKey as prodAnonKey,
+} from "./supabase/info";
 
-const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-a8f4bfaf`;
+const isLocal =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const publicAnonKey = isLocal
+  ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  : prodAnonKey;
+
+const API_BASE_URL = isLocal
+  ? "http://127.0.0.1:54321/functions/v1/server"
+  : `https://${prodProjectId}.supabase.co/functions/v1/server`;
 
 export async function signUp(email: string, password: string, name: string) {
   const response = await fetch(`${API_BASE_URL}/signup`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${publicAnonKey}`,
     },
     body: JSON.stringify({ email, password, name }),
@@ -14,16 +29,20 @@ export async function signUp(email: string, password: string, name: string) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to sign up');
+    throw new Error(data.error || "Failed to sign up");
   }
   return data;
 }
 
-export async function createWishlist(accessToken: string, name: string, description?: string) {
+export async function createWishlist(
+  accessToken: string,
+  name: string,
+  description?: string
+) {
   const response = await fetch(`${API_BASE_URL}/wishlists`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ name, description }),
@@ -31,7 +50,7 @@ export async function createWishlist(accessToken: string, name: string, descript
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to create wishlist');
+    throw new Error(data.error || "Failed to create wishlist");
   }
   return data;
 }
@@ -43,9 +62,13 @@ export async function getWishlists(accessToken: string) {
     },
   });
 
+  if (response.status === 401) {
+    throw new Error("Unauthorized");
+  }
+
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to fetch wishlists');
+    throw new Error(data.error || "Failed to fetch wishlists");
   }
   return data;
 }
@@ -59,21 +82,24 @@ export async function getWishlist(accessToken: string, id: string) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to fetch wishlist');
+    throw new Error(data.error || "Failed to fetch wishlist");
   }
   return data;
 }
 
 export async function getSharedWishlist(shareToken: string) {
-  const response = await fetch(`${API_BASE_URL}/wishlists/shared/${shareToken}`, {
-    headers: {
-      Authorization: `Bearer ${publicAnonKey}`,
-    },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/shared/${shareToken}`,
+    {
+      headers: {
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+    }
+  );
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to fetch wishlist');
+    throw new Error(data.error || "Failed to fetch wishlist");
   }
   return data;
 }
@@ -81,35 +107,86 @@ export async function getSharedWishlist(shareToken: string) {
 export async function addItem(
   accessToken: string,
   wishlistId: string,
-  item: { url?: string; description?: string; title?: string }
+  item: {
+    url?: string;
+    description?: string;
+    title?: string;
+    image_url?: string;
+    image_urls?: string[];
+  }
 ) {
-  const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(item),
-  });
+  // Fetch OG image client-side before sending to API
+  let ogImageUrl = item.image_url || "";
+  let image_urls: string[] = item.image_urls || [];
+
+  if (item.url && image_urls.length === 0) {
+    try {
+      const images = await fetchOgImage(item.url);
+      if (images && images.length > 0) {
+        image_urls = images;
+        // If we didn't have a specific image selected, use the first one
+        if (!ogImageUrl) {
+          ogImageUrl = images[0];
+        }
+      }
+    } catch (error) {
+      console.warn("[addItem] Failed to fetch OG image:", error);
+    }
+  } else {
+    // console.log("[addItem] No URL provided, skipping OG image fetch");
+  }
+
+  const body = JSON.stringify({ ...item, ogImageUrl, image_urls });
+
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/items`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: body,
+    }
+  );
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to add item');
+    throw new Error(data.error || "Failed to add item");
   }
+
+  // Polyfill image_urls if backend dropped them but we have them generated client-side
+  if (
+    (!data.image_urls || data.image_urls.length === 0) &&
+    image_urls.length > 0
+  ) {
+    console.warn(
+      "[addItem] Backend missing image_urls, polyfilling from request"
+    );
+    data.image_urls = image_urls;
+  }
+
   return data;
 }
 
-export async function deleteItem(accessToken: string, wishlistId: string, itemId: string) {
-  const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+export async function deleteItem(
+  accessToken: string,
+  wishlistId: string,
+  itemId: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to delete item');
+    throw new Error(data.error || "Failed to delete item");
   }
   return data;
 }
@@ -118,44 +195,84 @@ export async function updateItem(
   accessToken: string,
   wishlistId: string,
   itemId: string,
-  updates: { title?: string; url?: string; description?: string }
+  updates: { title?: string; url?: string; description?: string; image_url?: string }
 ) {
-  const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(updates),
-  });
+  // Fetch OG image client-side if URL changed
+  let ogImageUrl: string | undefined = updates.image_url;
+  let image_urls: string[] | undefined;
+
+  if (updates.url) {
+    try {
+      const images = await fetchOgImage(updates.url);
+      if (images && images.length > 0) {
+        image_urls = images;
+        // Only override if we don't have a specific one (or if the URL changed and implies a reset, but usually explicit selection wins)
+        // However, if URL changes, we might want to reset the image? 
+        // For now, let's prioritize the passed image_url if it exists.
+        if (!ogImageUrl) {
+          ogImageUrl = images[0];
+        }
+      } else {
+        if (!ogImageUrl) ogImageUrl = ""; // clear if NO images found and no explicit one
+        image_urls = [];
+      }
+    } catch (error) {
+      console.warn("Failed to fetch OG image:", error);
+      if (!ogImageUrl) ogImageUrl = "";
+      image_urls = [];
+    }
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      // Pass ogImageUrl as 'image_url' or 'ogImageUrl' depending on what the backend expects?
+      // The backend 'updateItem' likely looks for 'ogImageUrl' or 'image_url'.
+      // Looking at 'addItem', we sent 'ogImageUrl'. 
+      // Let's assume consistent backend.
+      body: JSON.stringify({ ...updates, ogImageUrl, image_urls }),
+    }
+  );
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to update item');
+    throw new Error(data.error || "Failed to update item");
   }
   return data;
 }
 
-export async function updateItemClaimed(wishlistId: string, itemId: string, claimed: boolean) {
-  const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}/claim`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${publicAnonKey}`,
-    },
-    body: JSON.stringify({ claimed }),
-  });
+export async function updateItemClaimed(
+  wishlistId: string,
+  itemId: string,
+  claimed: boolean
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}/claim`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+      body: JSON.stringify({ claimed }),
+    }
+  );
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to update item');
+    throw new Error(data.error || "Failed to update item");
   }
   return data;
 }
 
 export async function deleteWishlist(accessToken: string, wishlistId: string) {
   const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -163,7 +280,7 @@ export async function deleteWishlist(accessToken: string, wishlistId: string) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to delete wishlist');
+    throw new Error(data.error || "Failed to delete wishlist");
   }
   return data;
 }
@@ -174,9 +291,9 @@ export async function updateWishlist(
   updates: { name?: string; description?: string }
 ) {
   const response = await fetch(`${API_BASE_URL}/wishlists/${wishlistId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(updates),
@@ -184,7 +301,82 @@ export async function updateWishlist(
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to update wishlist');
+    throw new Error(data.error || "Failed to update wishlist");
   }
+  return data;
+}
+
+export async function followWishlist(accessToken: string, wishlistId: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/follow`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to follow wishlist");
+  return data;
+}
+
+export async function unfollowWishlist(
+  accessToken: string,
+  wishlistId: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/follow`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.error || "Failed to unfollow wishlist");
+  return data;
+}
+
+export async function getFollowingStatus(
+  accessToken: string,
+  wishlistId: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/follow`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.error || "Failed to get following status");
+  return data;
+}
+
+export async function updateItemImage(
+  accessToken: string,
+  itemId: string,
+  wishlistId: string,
+  imageUrl: string
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/wishlists/${wishlistId}/items/${itemId}/image`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ imageUrl }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.error || "Failed to update item image");
   return data;
 }

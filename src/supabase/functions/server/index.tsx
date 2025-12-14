@@ -230,7 +230,7 @@ app.post('/make-server-a8f4bfaf/wishlists/:id/items', async (c) => {
     }
 
     const { id } = c.req.param();
-    const { url, description, title } = await c.req.json();
+    const { url, description, title, ogImageUrl } = await c.req.json();
     
     if (!url && !description) {
       return c.json({ error: 'URL or description is required' }, 400);
@@ -246,11 +246,6 @@ app.post('/make-server-a8f4bfaf/wishlists/:id/items', async (c) => {
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    let ogImageUrl = '';
-    if (url) {
-      ogImageUrl = await fetchOgImage(url) || '';
-    }
-    
     const item = {
       id: crypto.randomUUID(),
       title: title || '',
@@ -258,7 +253,7 @@ app.post('/make-server-a8f4bfaf/wishlists/:id/items', async (c) => {
       description: description || '',
       addedAt: new Date().toISOString(),
       claimed: false,
-      ogImageUrl
+      ogImageUrl: ogImageUrl || ''
     };
 
     wishlist.items.push(item);
@@ -340,7 +335,7 @@ app.patch('/make-server-a8f4bfaf/wishlists/:id/items/:itemId', async (c) => {
     }
 
     const { id, itemId } = c.req.param();
-    const { title, url, description } = await c.req.json();
+    const { title, url, description, ogImageUrl } = await c.req.json();
     
     const wishlist = await kv.get(`wishlist:${id}`);
 
@@ -359,19 +354,9 @@ app.patch('/make-server-a8f4bfaf/wishlists/:id/items/:itemId', async (c) => {
 
     // Update item properties
     if (title !== undefined) item.title = title;
-    if (url !== undefined) {
-      item.url = url;
-      // Fetch new OG image if URL changed
-      if (url) {
-        const ogImageUrl = await fetchOgImage(url);
-        if (ogImageUrl) {
-          item.ogImageUrl = ogImageUrl;
-        }
-      } else {
-        item.ogImageUrl = '';
-      }
-    }
+    if (url !== undefined) item.url = url;
     if (description !== undefined) item.description = description;
+    if (ogImageUrl !== undefined) item.ogImageUrl = ogImageUrl;
 
     await kv.set(`wishlist:${id}`, wishlist);
 

@@ -1,0 +1,4 @@
+project_id = "gf_wish_list"
+
+[functions.server]
+verify_jwt = false

@@ -380,3 +380,17 @@ export async function updateItemImage(
     throw new Error(data.error || "Failed to update item image");
   return data;
 }
+
+export async function searchWishlists(accessToken: string, query: string) {
+  const response = await fetch(`${API_BASE_URL}/wishlists/search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ query }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to search wishlists");
+  return data.results;
+}

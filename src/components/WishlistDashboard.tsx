@@ -18,9 +18,11 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Plus, Gift, LogOut, ExternalLink, Heart } from "lucide-react";
-import { createWishlist, getWishlists, getWishlist } from "../utils/api";
+import { Plus, Gift, LogOut, ExternalLink, Heart, UserMinus } from "lucide-react";
+import { createWishlist, getWishlists, getWishlist, unfollowWishlist } from "../utils/api";
 import { createClient } from "../utils/supabase-client";
+import { FindWishlistDialog } from "./FindWishlistDialog";
+import { toast } from "sonner";
 import { WishlistView } from "./WishlistView";
 
 interface Wishlist {
@@ -31,6 +33,7 @@ interface Wishlist {
   items: any[];
   created_at: string;
   user_id: string;
+  owner_name?: string;
 }
 
 interface WishlistDashboardProps {
@@ -56,6 +59,7 @@ export function WishlistDashboard({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newWishlistName, setNewWishlistName] = useState("");
   const [newWishlistDescription, setNewWishlistDescription] = useState("");
+
 
   useEffect(() => {
     loadWishlists();
@@ -94,8 +98,30 @@ export function WishlistDashboard({
       setNewWishlistName("");
       setNewWishlistDescription("");
       setIsCreateDialogOpen(false);
+      toast.success("Wishlist created", {
+        description: "Your new wishlist has been created successfully.",
+      });
     } catch (error) {
       console.error("Error creating wishlist:", error);
+      toast.error("Error", {
+        description: "Failed to create wishlist.",
+      });
+    }
+  };
+
+  const handleUnfollow = async (e: React.MouseEvent, wishlistId: string) => {
+    e.stopPropagation(); // Prevent card click
+    try {
+      await unfollowWishlist(accessToken, wishlistId);
+      setFollowingWishlists(followingWishlists.filter(w => w.id !== wishlistId));
+      toast.success("Unfollowed", {
+        description: "You have unfollowed this wishlist.",
+      });
+    } catch (error) {
+      console.error("Error unfollowing:", error);
+      toast.error("Error", {
+        description: "Failed to unfollow wishlist.",
+      });
     }
   };
 
@@ -152,7 +178,7 @@ export function WishlistDashboard({
       <div className="max-w-7xl mx-auto p-4 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="mb-1">Welcome, {userName}!</h1>
+            <h1 className="mb-1 text-2xl font-bold">Welcome, {userName}!</h1>
             <p className="text-muted-foreground">
               Manage your wishlists and share them with friends
             </p>
@@ -163,7 +189,7 @@ export function WishlistDashboard({
           </Button>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-4">
           <Dialog
             open={isCreateDialogOpen}
             onOpenChange={setIsCreateDialogOpen}
@@ -208,17 +234,19 @@ export function WishlistDashboard({
               </form>
             </DialogContent>
           </Dialog>
+
+          <FindWishlistDialog accessToken={accessToken} onFollowSuccess={loadWishlists} />
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading wishlists...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" />
           </div>
         ) : wishlists.length === 0 && followingWishlists.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Gift className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="mb-2">No wishlists yet</h3>
+              <h3 className="mb-2 font-semibold">No wishlists yet</h3>
               <p className="text-muted-foreground mb-4">
                 Create your first wishlist to get started
               </p>
@@ -228,7 +256,7 @@ export function WishlistDashboard({
           <div className="space-y-8">
             {wishlists.length > 0 && (
               <div>
-                <h2 className="mb-4">My Wishlists</h2>
+                <h2 className="mb-4 text-xl font-semibold">My Wishlists</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {wishlists.map((wishlist) => (
                     <Card
@@ -261,21 +289,34 @@ export function WishlistDashboard({
 
             {followingWishlists.length > 0 && (
               <div>
-                <h2 className="mb-4 flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+                  <Heart className="h-5 w-5 text-pink-500" />
                   Following
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {followingWishlists.map((wishlist) => (
                     <Card
                       key={wishlist.id}
-                      className="hover:shadow-lg transition-shadow cursor-pointer border-pink-200"
+                      className="hover:shadow-lg transition-shadow cursor-pointer border-pink-100 dark:border-pink-900"
                       onClick={() => handleWishlistClick(wishlist, false)}
                     >
                       <CardHeader>
                         <CardTitle className="flex items-start justify-between">
-                          <span className="line-clamp-1">{wishlist.name}</span>
-                          <Heart className="h-5 w-5 text-pink-500 flex-shrink-0 ml-2" />
+                          <div className="flex flex-col">
+                            <span className="line-clamp-1">{wishlist.name}</span>
+                            <span className="text-xs font-normal text-muted-foreground">
+                              by {wishlist.owner_name || "Unknown"}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-pink-500 hover:text-pink-700 -mt-1 -mr-2"
+                            onClick={(e) => handleUnfollow(e, wishlist.id)}
+                            title="Unfollow"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
                         </CardTitle>
                         {wishlist.description && (
                           <CardDescription className="line-clamp-2">

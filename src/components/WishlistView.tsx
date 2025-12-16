@@ -75,6 +75,8 @@ interface Wishlist {
   share_token: string;
   items: WishlistItem[];
   created_at: string;
+  user_id: string;
+  owner_name?: string;
 }
 
 interface WishlistViewProps {
